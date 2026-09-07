@@ -343,6 +343,10 @@ function renderIssuePage(issueId) {
                 ${renderGoldOrnament()}
                 <div class="magazine-subtitle">${CONFIG.DEPARTMENT}</div>
                 <div class="issue-info">${escHtml(issue.date)} Folio</div>
+                <div class="export-issue-bar" style="margin-top:24px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" onclick="downloadIssueAsHtml('${issueId}')" style="cursor:pointer; background:transparent; border:1px solid currentColor; color:inherit; font-family:'Montserrat',sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:10px 18px; border-radius:2px; opacity:0.85;">⬇ Download Issue (HTML)</button>
+                    <button type="button" onclick="downloadIssueAsPdf('${issueId}')" style="cursor:pointer; background:transparent; border:1px solid currentColor; color:inherit; font-family:'Montserrat',sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:10px 18px; border-radius:2px; opacity:0.85;">⬇ Download Issue (PDF)</button>
+                </div>
             </div>
         </header>
         <section class="cover-section">
@@ -872,6 +876,248 @@ function displayApplicationError(msg) {
 /* ═══════════════════════════════════════════════════════
    INITIALIZATION
    ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   ISSUE EXPORT — bundles an entire issue (cover, about,
+   every article, patrons, editorial board) into one
+   self-contained, offline-readable HTML document that can
+   either be saved directly or sent to the browser's print
+   dialog so the reader can "Save as PDF".
+   ═══════════════════════════════════════════════════════ */
+
+// Riddles are rendered with a click-to-reveal button on the live site.
+// In a static export there's no reason to hide the answer, so both
+// question and answer are printed together.
+function parseRiddlesForExport(text) {
+    let html = '';
+    const qas = text.split('>>').map(item => item.trim()).filter(Boolean);
+
+    for (let i = 0; i < qas.length; i++) {
+        if (qas[i].startsWith('??')) {
+            const question = qas[i].slice(2).trim().replace(/\n/g, '<br>');
+            const answer = (qas[i + 1] && !qas[i + 1].startsWith('??')) ? qas[i + 1].trim() : '...';
+            html += `
+                <div class="export-riddle">
+                    <div class="export-riddle-q"><strong>Q.</strong> ${question}</div>
+                    <div class="export-riddle-a"><strong>A.</strong> ${escHtml(answer)}</div>
+                </div>`;
+        }
+    }
+    return html;
+}
+
+function parseContentForExport(text, category) {
+    if (!text) return '';
+    if (category === 'Riddles') return parseRiddlesForExport(text);
+    // Cryptic clues and standard prose already render their answers/hints
+    // inline, so the normal parser is reused as-is for those.
+    return parseContent(text, category);
+}
+
+function renderArticleExportBlock(art, index) {
+    const num = String(index + 1).padStart(2, '0');
+    const body = parseContentForExport(art.content || '', art.category || '');
+    return `
+        <article class="export-article" id="art-${escHtml(art.slug)}">
+            <div class="export-article-num">${num}</div>
+            <div class="export-category">${escHtml(art.category || '')}</div>
+            <h2 class="export-article-title">${escHtml(art.title)}</h2>
+            <div class="export-author">
+                <span class="export-author-name">${escHtml(art.author || '')}</span>
+                ${art.authorbio ? `<span class="export-author-bio"> — ${escHtml(art.authorbio)}</span>` : ''}
+            </div>
+            <div class="export-body">${body}</div>
+        </article>`;
+}
+
+function sanitizeFilename(name) {
+    return String(name || 'issue')
+        .trim()
+        .replace(/[^a-z0-9\-_]+/gi, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'issue';
+}
+
+function buildIssueExportDocument(issueId) {
+    const issue = CoreData.getIssue(issueId);
+    if (!issue) return null;
+
+    const articles = CoreData.getArticles(issueId);
+    const patrons = CoreData.getPatrons(issueId);
+    const editorial = CoreData.getEditorial(issueId);
+    const imgSrc = issue.cover || `https://picsum.photos/seed/${issue.id}/800/560.jpg`;
+
+    let toc = articles.map((a, i) =>
+        `<li><a href="#art-${escHtml(a.slug)}">${String(i + 1).padStart(2, '0')}. ${escHtml(a.title)} <span class="export-toc-meta">— ${escHtml(a.author)}</span></a></li>`
+    ).join('');
+    toc += `<li><a href="#export-patrons">✦ Our Patrons</a></li>`;
+    toc += `<li><a href="#export-editorial">✦ Editorial Board</a></li>`;
+
+    const articlesHtml = articles.map((a, i) => renderArticleExportBlock(a, i)).join('\n<hr class="export-divider">\n');
+
+    const patronsHtml = patrons.map(p => `
+        <div class="export-patron">
+            <div class="export-patron-name">${escHtml(p.name)}</div>
+            <div class="export-patron-title">${escHtml(p.title)}</div>
+            <div class="export-patron-bio">${escHtml(p.bio)}</div>
+        </div>`).join('');
+
+    const editorialHtml = editorial.map(e => `
+        <div class="export-editor">
+            <div class="export-editor-name">${escHtml(e.name)}</div>
+            <div class="export-editor-role">${escHtml(e.role)}</div>
+        </div>`).join('');
+
+    const generatedDate = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // This document is intentionally fully self-contained: system fonts
+    // only (no external font/CSS requests), so the saved .html file opens
+    // and looks right even without an internet connection. The only
+    // remaining network dependency is the cover/article <img> sources
+    // themselves, since those live on external hosts (Drive, picsum, etc).
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escHtml(issue.title)} — Eclatineers</title>
+<style>
+  :root{ --ink:#1c1a17; --paper:#faf7f0; --accent:#8a6d3b; --line:#ddd4c0; --muted:#6b6459; }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family: Georgia, 'Times New Roman', serif; line-height:1.7; }
+  .export-wrap{max-width:760px; margin:0 auto; padding:60px 28px 100px;}
+  .export-header{text-align:center; margin-bottom:40px;}
+  .export-college{font-family: Arial, Helvetica, sans-serif; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted);}
+  .export-title{font-size:42px; margin:14px 0 6px; font-weight:700;}
+  .export-ornament{margin:14px 0; letter-spacing:8px; color:var(--accent);}
+  .export-subtitle{font-family: Arial, Helvetica, sans-serif; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);}
+  .export-date{margin-top:10px; font-style:italic; color:var(--muted);}
+  .export-cover{width:100%; max-height:460px; object-fit:cover; margin:30px 0; border:1px solid var(--line);}
+  .export-about{font-style:italic; font-size:19px; text-align:center; margin:30px auto; max-width:600px; color:#3a352c;}
+  .export-toc{border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:24px 0; margin:40px 0;}
+  .export-toc h3{font-family: Arial, Helvetica, sans-serif; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin:0 0 14px;}
+  .export-toc ul{list-style:none; padding:0; margin:0;}
+  .export-toc li{margin:6px 0;}
+  .export-toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  .export-toc-meta{color:var(--muted); font-style:italic;}
+  .export-divider{border:none; border-top:1px solid var(--line); margin:56px 0;}
+  .export-article-num{font-family: Arial, Helvetica, sans-serif; font-size:11px; color:var(--accent); letter-spacing:2px;}
+  .export-category{font-family: Arial, Helvetica, sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:4px;}
+  .export-article-title{font-size:28px; margin:8px 0 10px;}
+  .export-author{font-family: Arial, Helvetica, sans-serif; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:24px;}
+  .export-author-bio{text-transform:none; font-style:italic;}
+  .export-body p{margin:0 0 18px; font-size:17px;}
+  .export-body .article-quote{font-style:italic; font-size:22px; border-left:3px solid var(--accent); padding:6px 0 6px 22px; margin:26px 0; color:#3a352c;}
+  .export-body .highlight-box{background:#f1ead9; border:1px solid var(--line); padding:18px 22px; margin:24px 0; border-radius:2px;}
+  .export-body .highlight-box h3{margin-top:0; font-size:15px; letter-spacing:1px; text-transform:uppercase; font-family: Arial, Helvetica, sans-serif; color:var(--accent);}
+  .export-body .article-image{margin:26px 0;}
+  .export-body .article-image img{width:100%; border:1px solid var(--line);}
+  .export-body .image-caption{font-family: Arial, Helvetica, sans-serif; font-size:11px; color:var(--muted); text-align:center; margin-top:6px; letter-spacing:0.5px;}
+  .export-body .clue-card{border:1px solid var(--line); padding:14px 18px; border-radius:2px; margin-bottom:14px;}
+  .export-body .clue-number{font-family: Arial, Helvetica, sans-serif; font-size:11px; color:var(--accent); letter-spacing:1px; text-transform:uppercase;}
+  .export-body .clue-hint{color:var(--muted); font-style:italic; margin-top:6px; font-size:14px;}
+  .export-riddle{margin-bottom:16px; border:1px solid var(--line); padding:14px 18px; border-radius:2px;}
+  .export-riddle-q{margin-bottom:8px;}
+  .export-riddle-a{color:var(--muted);}
+  .export-section-title{font-size:26px; text-align:center; margin-bottom:30px;}
+  .export-patron, .export-editor{text-align:center; padding:16px 0; border-bottom:1px solid var(--line);}
+  .export-patron-name, .export-editor-name{font-size:18px; font-weight:700;}
+  .export-patron-title, .export-editor-role{font-family: Arial, Helvetica, sans-serif; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-top:4px;}
+  .export-patron-bio{margin-top:8px; color:#3a352c; font-size:15px;}
+  .export-footer{text-align:center; margin-top:80px; font-family: Arial, Helvetica, sans-serif; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);}
+  @media print{
+    body{background:#fff;}
+    .export-wrap{padding:0 8px;}
+    .export-article{page-break-before:always;}
+    .export-toc{page-break-after:always;}
+    .export-cover{max-height:340px;}
+  }
+</style>
+</head>
+<body>
+<div class="export-wrap">
+  <div class="export-header">
+    <div class="export-college">${escHtml(CONFIG.COLLEGE)}</div>
+    <div class="export-title">${escHtml(issue.title)}</div>
+    <div class="export-ornament">✦ ⚜ ✦</div>
+    <div class="export-subtitle">${escHtml(CONFIG.DEPARTMENT)}</div>
+    <div class="export-date">${escHtml(issue.date)} Folio</div>
+  </div>
+
+  <img class="export-cover" src="${escHtml(imgSrc)}" alt="Cover">
+
+  ${issue.about ? `<div class="export-about">"${escHtml(issue.about)}"</div>` : ''}
+
+  <div class="export-toc">
+    <h3>Index of Work</h3>
+    <ul>${toc}</ul>
+  </div>
+
+  ${articlesHtml}
+
+  <hr class="export-divider">
+
+  <div id="export-patrons">
+    <h2 class="export-section-title">Our Patrons</h2>
+    ${patronsHtml}
+  </div>
+
+  <hr class="export-divider">
+
+  <div id="export-editorial">
+    <h2 class="export-section-title">Editorial Board</h2>
+    ${editorialHtml}
+  </div>
+
+  <div class="export-footer">
+    ${escHtml(CONFIG.FOOTER_NOTE)}<br><br>
+    Eclatineers — ${escHtml(CONFIG.COLLEGE)}<br>
+    Generated ${generatedDate} · ${escHtml(CONFIG.WEBSITE)}
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+window.downloadIssueAsHtml = function(issueId) {
+    const doc = buildIssueExportDocument(issueId);
+    if (!doc) { alert('Could not prepare this issue for download.'); return; }
+    const issue = CoreData.getIssue(issueId);
+    const blob = new Blob([doc], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${sanitizeFilename(issue.title)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+};
+
+window.downloadIssueAsPdf = function(issueId) {
+    const doc = buildIssueExportDocument(issueId);
+    if (!doc) { alert('Could not prepare this issue for download.'); return; }
+
+    // No PDF library is bundled, so this leans on the browser's own
+    // print engine: open the export document in a new tab and trigger
+    // print(), where "Save as PDF" is a built-in destination in every
+    // major browser's print dialog.
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        alert('Please allow pop-ups for this site to export a PDF, or use "Download Issue (HTML)" instead.');
+        return;
+    }
+    printWin.document.open();
+    printWin.document.write(doc);
+    printWin.document.close();
+
+    const triggerPrint = () => { printWin.focus(); printWin.print(); };
+    if (printWin.document.readyState === 'complete') {
+        setTimeout(triggerPrint, 400);
+    } else {
+        printWin.onload = () => setTimeout(triggerPrint, 400);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Theme + font scale must be ready before first render
     initTheme();
