@@ -6,7 +6,7 @@
 <title>Acrostic Poem Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Playfair+Display:ital,wght@0,500;0,600;0,800;1,500&display=swap" rel="stylesheet">
 <style>
   :root{
     --cream:#f6efdc;
@@ -286,21 +286,34 @@
     font-style:italic;
     font-size:1.3rem;
     color:var(--ink);
-    margin:4px 0;
+    margin:8px 0;
     line-height:1.4;
   }
+  
+  @keyframes goldShimmer {
+    0% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); }
+    50% { color: #f9d71c; text-shadow: 0 0 15px #f9d71c; }
+    100% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); }
+  }
+
   #previewLines .cap{
     font-family:'Playfair Display', serif;
     font-style:normal;
-    font-weight:600;
-    color:var(--gold-deep);
+    font-weight:800;
+    font-size:2.4rem; /* VERY PROMINENT */
+    animation: goldShimmer 2.5s infinite ease-in-out;
+    display:inline-block;
+    line-height:0.8;
+    margin-right:4px;
+    vertical-align:-3px;
   }
 
   .footer-meta{
-    margin-top:22px;
+    margin-top:32px;
     text-align:center;
-    font-size:0.85rem;
-    color:var(--ink-soft);
+    font-size:1.6rem; /* VERY BIG */
+    font-weight:600;
+    color:var(--ink);
     font-style:italic;
   }
 
@@ -477,7 +490,7 @@
 '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
 '<title>An Acrostic Poem — ' + escapeHtml(currentName) + '</title>\n' +
 '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
-'<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">\n' +
+'<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,600&family=Playfair+Display:ital,wght@0,500;0,600;0,800;1,500&display=swap" rel="stylesheet">\n' +
 '<style>\n' +
 '  :root{--cream:#f6efdc;--cream-panel:#fbf6ea;--gold:#b8933f;--gold-deep:#8a6a24;--gold-pale:#e3d3a3;--ink:#3a2c1a;--ink-soft:#6b5636;}\n' +
 '  *{box-sizing:border-box;}\n' +
@@ -486,9 +499,10 @@
 '  .frame{background:rgba(251,246,234,0.92);border:1px solid var(--gold);padding:30px 24px;position:relative;}\n' +
 '  .frame::before{content:"";position:absolute;inset:6px;border:1px solid var(--gold-pale);pointer-events:none;}\n' +
 '  h1{font-family:\'Cinzel\', serif;font-weight:600;font-size:1.4rem;letter-spacing:0.04em;text-align:center;color:var(--gold-deep);margin:2px 0 22px;}\n' +
-'  p{font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.3rem;margin:5px 0;line-height:1.45;}\n' +
-'  .cap{font-family:\'Playfair Display\', serif;font-style:normal;font-weight:600;color:var(--gold-deep);}\n' +
-'  .meta{margin-top:26px;text-align:center;font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:0.95rem;color:var(--ink-soft);}\n' +
+'  p{font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.3rem;margin:8px 0;line-height:1.45;}\n' +
+'  @keyframes goldShimmer { 0% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } 50% { color: #f9d71c; text-shadow: 0 0 15px #f9d71c; } 100% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } }\n' +
+'  .cap{font-family:\'Playfair Display\', serif;font-style:normal;font-weight:800;font-size:2.6rem;animation:goldShimmer 2.5s infinite ease-in-out;display:inline-block;line-height:0.8;margin-right:4px;vertical-align:-3px;}\n' +
+'  .meta{margin-top:36px;text-align:center;font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.8rem;font-weight:600;color:var(--ink);}\n' +
 '</style>\n' +
 '</head>\n' +
 '<body>\n' +
@@ -529,7 +543,7 @@
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = slugify(currentName).html';
+    a.download = slugify(currentName) + '.html';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -538,7 +552,7 @@
 
   prBtn.addEventListener('click', function(){
     var html = buildPoemDocument();
-    var filename = slugify(currentName).html';
+    var filename = slugify(currentName) + '.html';
     var encoded = encodeURIComponent(html);
     if (encoded.length > 5500){
       warnLong.classList.add('active');
