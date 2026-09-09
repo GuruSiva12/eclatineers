@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Acrostic Poem Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Playfair+Display:ital,wght@0,500;0,600;0,800;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f6efdc;
+    --cream-panel:#fbf6ea;
+    --gold:#b8933f;
+    --gold-deep:#8a6a24;
+    --gold-pale:#e3d3a3;
+    --ink:#3a2c1a;
+    --ink-soft:#6b5636;
+    --line:#c9ac6a;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Cormorant Garamond', serif;
+  }
+
+  body{
+    min-height:100vh;
+    position:relative;
+    background-image:
+      linear-gradient(45deg, transparent 47%, var(--gold-pale) 49%, var(--gold-pale) 51%, transparent 53%),
+      linear-gradient(-45deg, transparent 47%, var(--gold-pale) 49%, var(--gold-pale) 51%, transparent 53%);
+    background-size: 46px 46px;
+    background-position: 0 0, 0 0;
+    opacity: 1;
+  }
+
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:var(--cream);
+    opacity:0.55;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* Responsive Layout Wrapper */
+  .layout-wrapper {
+    position:relative;
+    z-index:1;
+    display:flex;
+    flex-direction:column;
+    gap:2rem;
+    max-width:1200px;
+    margin:0 auto;
+    padding:22px 16px 60px;
+    align-items:center;
+  }
+
+  .main-content, .comments-section {
+    width:100%;
+    max-width:520px;
+  }
+
+  /* Desktop Layout: Side-by-Side */
+  @media (min-width: 1024px) {
+    .layout-wrapper {
+      flex-direction:row;
+      align-items:flex-start;
+      justify-content:center;
+      gap:3rem;
+      padding:40px 24px 80px;
+    }
+    .comments-section {
+      /* Makes the comments sticky on the right so they stay in view when scrolling */
+      position:sticky;
+      top:40px; 
+    }
+  }
+
+  .frame{
+    position:relative;
+    background:var(--cream-panel);
+    border:1px solid var(--gold);
+    padding:28px 22px 34px;
+    height:100%;
+  }
+
+  .frame::before{
+    content:"";
+    position:absolute;
+    inset:6px;
+    border:1px solid var(--gold-pale);
+    pointer-events:none;
+  }
+
+  .corner{
+    position:absolute;
+    width:26px;
+    height:26px;
+    pointer-events:none;
+  }
+  .corner svg{width:100%;height:100%;display:block;}
+  .corner-tl{top:-1px;left:-1px;}
+  .corner-tr{top:-1px;right:-1px;transform:scaleX(-1);}
+  .corner-bl{bottom:-1px;left:-1px;transform:scaleY(-1);}
+  .corner-br{bottom:-1px;right:-1px;transform:scale(-1,-1);}
+
+  h1{
+    font-family:'Cinzel', serif;
+    font-weight:600;
+    font-size:1.5rem;
+    letter-spacing:0.04em;
+    text-align:center;
+    color:var(--gold-deep);
+    margin:2px 0 4px;
+  }
+
+  .subtitle{
+    text-align:center;
+    font-style:italic;
+    color:var(--ink-soft);
+    font-size:1.05rem;
+    margin:0 0 22px;
+  }
+
+  .divider{
+    width:60px;
+    height:1px;
+    background:var(--gold);
+    margin:18px auto;
+    position:relative;
+  }
+  .divider::after{
+    content:"❖";
+    position:absolute;
+    top:-9px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--cream-panel);
+    padding:0 8px;
+    color:var(--gold);
+    font-size:0.8rem;
+  }
+
+  label{
+    display:block;
+    font-size:1rem;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+    text-align:center;
+  }
+
+  #nameInput{
+    display:block;
+    width:100%;
+    font-family:'Playfair Display', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:1.9rem;
+    text-align:center;
+    color:var(--ink);
+    background:transparent;
+    border:none;
+    border-bottom:2px solid var(--gold);
+    padding:6px 4px 10px;
+    outline:none;
+  }
+  #nameInput::placeholder{
+    color:var(--gold-pale);
+    font-family:'Cormorant Garamond', serif;
+    font-size:1.1rem;
+  }
+
+  .btn{
+    font-family:'Cormorant Garamond', serif;
+    font-size:1.08rem;
+    font-weight:600;
+    letter-spacing:0.03em;
+    color:var(--cream);
+    background:var(--gold-deep);
+    border:1px solid var(--gold-deep);
+    padding:11px 20px;
+    cursor:pointer;
+    display:block;
+    width:100%;
+    margin-top:20px;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn:hover{background:#755217;}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{
+    background:transparent;
+    color:var(--gold-pale);
+    border-color:var(--gold-pale);
+    cursor:not-allowed;
+  }
+  .btn.secondary{
+    background:transparent;
+    color:var(--gold-deep);
+    border:1px solid var(--gold-deep);
+  }
+  .btn.secondary:hover{background:rgba(184,147,63,0.1);}
+
+  #builder{display:none;}
+  #builder.active{display:block;}
+  #step1.hidden{display:none;}
+
+  .rows{margin:24px 0 6px;}
+
+  .row{
+    display:flex;
+    align-items:flex-end;
+    gap:14px;
+    padding:9px 0;
+    border-bottom:1px solid var(--gold-pale);
+  }
+
+  .row .letter{
+    font-family:'Playfair Display', serif;
+    font-weight:600;
+    font-size:1.9rem;
+    line-height:1;
+    color:var(--gold-deep);
+    width:36px;
+    flex-shrink:0;
+    text-align:center;
+  }
+
+  .row input.line{
+    flex:1;
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:1.25rem;
+    color:var(--ink);
+    background:transparent;
+    border:none;
+    outline:none;
+    padding:2px 2px 6px;
+    min-width:0;
+  }
+  .row input.line::placeholder{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    color:#b7a789;
+    font-size:0.95rem;
+  }
+
+  .gap-row{
+    display:flex;
+    justify-content:center;
+    padding:6px 0;
+    color:var(--gold-pale);
+    font-size:0.85rem;
+  }
+
+  .progress{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:0.92rem;
+    font-style:italic;
+    margin-top:14px;
+  }
+
+  #actions{
+    margin-top:22px;
+    display:none;
+  }
+  #actions.active{display:block;}
+
+  .action-note{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    text-align:center;
+    margin-top:8px;
+    line-height:1.4;
+  }
+
+  #warnLong{
+    display:none;
+    font-size:0.82rem;
+    color:#8a4a24;
+    text-align:center;
+    margin-top:10px;
+    line-height:1.4;
+  }
+  #warnLong.active{display:block;}
+
+  #preview{
+    display:none;
+    margin-top:26px;
+    padding-top:18px;
+    border-top:1px solid var(--gold);
+  }
+  #preview.active{display:block;}
+  #preview h2{
+    font-family:'Cinzel', serif;
+    font-size:1.05rem;
+    font-weight:600;
+    letter-spacing:0.03em;
+    color:var(--gold-deep);
+    text-align:center;
+    margin:0 0 14px;
+  }
+  #previewLines p{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:1.3rem;
+    color:var(--ink);
+    margin:8px 0;
+    line-height:1.4;
+  }
+  
+  @keyframes goldShimmer { 
+    0% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } 
+    50% { color: #f9d71c; text-shadow: 0 0 15px #f9d71c; } 
+    100% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } 
+  }
+
+  #previewLines .cap{
+    font-family:'Playfair Display', serif;
+    font-style:normal;
+    font-weight:800;
+    font-size:2.6rem; 
+    animation:goldShimmer 2.5s infinite ease-in-out;
+    display:inline-block;
+    line-height:0.8;
+    margin-right:4px;
+    vertical-align:-3px;
+  }
+
+  .footer-meta{
+    margin-top:36px;
+    text-align:center;
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:1.8rem; 
+    font-weight:600;
+    color:var(--ink);
+  }
+
+  .back-link{
+    display:block;
+    text-align:center;
+    margin-top:18px;
+    font-size:0.88rem;
+    color:var(--gold-deep);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+
+  @media print{
+    body::before{opacity:0.35;}
+    .comments-section, #step1, #actions, .back-link, label{display:none !important;}
+    .row input.line{border:none;}
+    .row .letter{font-size:2.2rem;}
+  }
+</style>
+</head>
+<body>
+
+<div class="layout-wrapper">
+  
+  <!-- Left Side: Poem Builder -->
+  <div class="main-content">
+    <div class="frame">
+      <div class="corner corner-tl"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+      <div class="corner corner-tr"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+      <div class="corner corner-bl"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+      <div class="corner corner-br"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+
+      <h1>Acrostic Poems</h1>
+      <p class="subtitle">Every letter of your name becomes a line</p>
+
+      <div id="step1">
+        <label for="nameInput">Enter your name</label>
+        <input type="text" id="nameInput" placeholder="Andrew Veda" autocomplete="off">
+        <button class="btn" id="beginBtn">Begin my poem</button>
+      </div>
+
+      <div id="builder">
+        <div class="divider"></div>
+        <div class="rows" id="rows"></div>
+        <p class="progress" id="progressText"></p>
+
+        <div id="actions">
+          <button class="btn" id="downloadBtn">Download as HTML</button>
+          <button class="btn secondary" id="prBtn">Create pull request</button>
+          <button class="btn secondary" id="printBtn">Print / save as PDF</button>
+          <p class="action-note">"Create pull request" opens GitHub with your poem pre-filled at andrewveda/eclatineers → poetry. Review it, then click "Propose changes" to open the pull request yourself.</p>
+          <p id="warnLong">Your poem is quite long — the GitHub link may not carry the full text. If the page opens empty or cut off, use "Download as HTML" and upload the file to the poetry folder manually instead.</p>
+        </div>
+
+        <div id="preview">
+          <h2>Your poem</h2>
+          <div id="previewLines"></div>
+          <p class="footer-meta" id="footerMeta"></p>
+        </div>
+
+        <span class="back-link" id="backLink">Start over with a different name</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side (or bottom): Giscus Comments -->
+  <div class="comments-section">
+    <div class="frame">
+      <div class="corner corner-tl"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+      <div class="corner corner-tr"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+      <div class="corner corner-bl"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+      <div class="corner corner-br"><svg viewBox="0 0 26 26"><path d="M2 24 C2 10, 10 2, 24 2" fill="none" stroke="#b8933f" stroke-width="1.4"/><circle cx="24" cy="2" r="1.6" fill="#b8933f"/><circle cx="2" cy="24" r="1.6" fill="#b8933f"/></svg></div>
+
+      <h1>Guestbook</h1>
+      <p class="subtitle">Share your thoughts & poems below</p>
+      
+      <!-- Giscus Setup -->
+      <!-- Make sure to replace YOUR_REPO_ID and YOUR_CATEGORY_ID with actual values from giscus.app -->
+      <script src="https://giscus.app/client.js"
+        data-repo="andrewveda/eclatineers"
+        data-repo-id="R_kgDOTP7ILw"
+        data-category="General"
+        data-category-id="DIC_kwDOTP7IL84DAruF"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+      </script>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var nameInput = document.getElementById('nameInput');
+  var beginBtn = document.getElementById('beginBtn');
+  var step1 = document.getElementById('step1');
+  var builder = document.getElementById('builder');
+  var rowsEl = document.getElementById('rows');
+  var progressText = document.getElementById('progressText');
+  var actions = document.getElementById('actions');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var prBtn = document.getElementById('prBtn');
+  var printBtn = document.getElementById('printBtn');
+  var warnLong = document.getElementById('warnLong');
+  var preview = document.getElementById('preview');
+  var previewLines = document.getElementById('previewLines');
+  var footerMeta = document.getElementById('footerMeta');
+  var backLink = document.getElementById('backLink');
+
+  var currentName = '';
+  var letterInputs = [];
+
+  function slugify(str){
+    return str.toLowerCase().trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  }
+
+  function buildRows(name){
+    rowsEl.innerHTML = '';
+    letterInputs = [];
+    var chars = name.trim().split('');
+    chars.forEach(function(ch){
+      if (/[a-zA-Z]/.test(ch)){
+        var row = document.createElement('div');
+        row.className = 'row';
+
+        var letterSpan = document.createElement('span');
+        letterSpan.className = 'letter';
+        letterSpan.textContent = ch.toUpperCase();
+
+        var input = document.createElement('input');
+        input.className = 'line';
+        input.type = 'text';
+        input.placeholder = 'write a line…';
+        input.addEventListener('input', updateProgress);
+
+        row.appendChild(letterSpan);
+        row.appendChild(input);
+        rowsEl.appendChild(row);
+        letterInputs.push({letter: ch.toUpperCase(), input: input});
+      } else if (ch === ' '){
+        var gap = document.createElement('div');
+        gap.className = 'gap-row';
+        gap.textContent = '❖';
+        rowsEl.appendChild(gap);
+      }
+    });
+  }
+
+  function updateProgress(){
+    var filled = letterInputs.filter(function(li){ return li.input.value.trim().length > 0; }).length;
+    var total = letterInputs.length;
+    progressText.textContent = filled + ' of ' + total + ' lines written';
+
+    if (filled === total && total > 0){
+      actions.classList.add('active');
+      renderPreview();
+    } else {
+      actions.classList.remove('active');
+      preview.classList.remove('active');
+    }
+  }
+
+  function renderPreview(){
+    preview.classList.add('active');
+    previewLines.innerHTML = '';
+    letterInputs.forEach(function(li){
+      var p = document.createElement('p');
+      var text = li.input.value.trim();
+      var rest = text.length > 0 && text[0].toUpperCase() === li.letter
+        ? text.slice(1)
+        : text;
+      var capSpan = document.createElement('span');
+      capSpan.className = 'cap';
+      capSpan.textContent = li.letter;
+      p.appendChild(capSpan);
+      p.appendChild(document.createTextNode(rest));
+      previewLines.appendChild(p);
+    });
+    var today = new Date();
+    var dateStr = today.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    footerMeta.textContent = '— ' + currentName + ', ' + dateStr;
+  }
+
+  function buildPoemDocument(){
+    var today = new Date();
+    var dateStr = today.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    var linesHtml = letterInputs.map(function(li){
+      var text = li.input.value.trim();
+      var rest = text.length > 0 && text[0].toUpperCase() === li.letter
+        ? text.slice(1)
+        : text;
+      return '<p><span class="cap">' + escapeHtml(li.letter) + '</span>' + escapeHtml(rest) + '</p>';
+    }).join('\n      ');
+
+    return '<!DOCTYPE html>\n' +
+'<html lang="en">\n' +
+'<head>\n' +
+'<meta charset="UTF-8">\n' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+'<title>An Acrostic Poem — ' + escapeHtml(currentName) + '</title>\n' +
+'<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+'<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,600&family=Playfair+Display:ital,wght@0,500;0,600;0,800;1,500&display=swap" rel="stylesheet">\n' +
+'<style>\n' +
+'  :root{--cream:#f6efdc;--cream-panel:#fbf6ea;--gold:#b8933f;--gold-deep:#8a6a24;--gold-pale:#e3d3a3;--ink:#3a2c1a;--ink-soft:#6b5636;}\n' +
+'  *{box-sizing:border-box;}\n' +
+'  body{margin:0;background:var(--cream);background-image:linear-gradient(45deg, transparent 47%, var(--gold-pale) 49%, var(--gold-pale) 51%, transparent 53%),linear-gradient(-45deg, transparent 47%, var(--gold-pale) 49%, var(--gold-pale) 51%, transparent 53%);background-size:46px 46px;font-family:\'Cormorant Garamond\', serif;color:var(--ink);}\n' +
+'  .page{max-width:520px;margin:0 auto;padding:32px 18px 60px;}\n' +
+'  .frame{background:rgba(251,246,234,0.92);border:1px solid var(--gold);padding:30px 24px;position:relative;}\n' +
+'  .frame::before{content:"";position:absolute;inset:6px;border:1px solid var(--gold-pale);pointer-events:none;}\n' +
+'  h1{font-family:\'Cinzel\', serif;font-weight:600;font-size:1.4rem;letter-spacing:0.04em;text-align:center;color:var(--gold-deep);margin:2px 0 22px;}\n' +
+'  p{font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.3rem;margin:8px 0;line-height:1.45;}\n' +
+'  @keyframes goldShimmer { 0% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } 50% { color: #f9d71c; text-shadow: 0 0 15px #f9d71c; } 100% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } }\n' +
+'  .cap{font-family:\'Playfair Display\', serif;font-style:normal;font-weight:800;font-size:2.6rem;animation:goldShimmer 2.5s infinite ease-in-out;display:inline-block;line-height:0.8;margin-right:4px;vertical-align:-3px;}\n' +
+'  .meta{margin-top:36px;text-align:center;font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.8rem;font-weight:600;color:var(--ink);}\n' +
+'</style>\n' +
+'</head>\n' +
+'<body>\n' +
+'  <div class="page">\n' +
+'    <div class="frame">\n' +
+'      <h1>An Acrostic Poem</h1>\n' +
+'      ' + linesHtml + '\n' +
+'      <p class="meta">— ' + escapeHtml(currentName) + ', ' + dateStr + '</p>\n' +
+'    </div>\n' +
+'  </div>\n' +
+'</body>\n' +
+'</html>';
+  }
+
+  function escapeHtml(str){
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  beginBtn.addEventListener('click', function(){
+    var val = nameInput.value.trim();
+    if (!val) { nameInput.focus(); return; }
+    currentName = val;
+    buildRows(val);
+    step1.classList.add('hidden');
+    builder.classList.add('active');
+    updateProgress();
+  });
+
+  nameInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') beginBtn.click();
+  });
+
+  downloadBtn.addEventListener('click', function(){
+    var html = buildPoemDocument();
+    var blob = new Blob([html], {type: 'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = slugify(currentName) + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  prBtn.addEventListener('click', function(){
+    var html = buildPoemDocument();
+    var filename = slugify(currentName) + '.html';
+    var encoded = encodeURIComponent(html);
+    if (encoded.length > 5500){
+      warnLong.classList.add('active');
+    } else {
+      warnLong.classList.remove('active');
+    }
+    var url = 'https://github.com/andrewveda/eclatineers/new/main/poetry?filename=' + encodeURIComponent(filename) + '&value=' + encoded;
+    window.open(url, '_blank');
+  });
+
+  printBtn.addEventListener('click', function(){
+    window.print();
+  });
+
+  backLink.addEventListener('click', function(){
+    step1.classList.remove('hidden');
+    builder.classList.remove('active');
+    actions.classList.remove('active');
+    preview.classList.remove('active');
+    warnLong.classList.remove('active');
+    nameInput.value = '';
+    nameInput.focus();
+  });
+})();
+</script>
+
+</body>
+</html>
