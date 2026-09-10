@@ -151,6 +151,30 @@
     font-size:1.1rem;
   }
 
+  label.dept-label{
+    margin-top:22px;
+  }
+
+  #deptSelect{
+    display:block;
+    width:100%;
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:1.15rem;
+    text-align:center;
+    text-align-last:center;
+    color:var(--ink);
+    background:transparent;
+    border:none;
+    border-bottom:2px solid var(--gold);
+    padding:6px 4px 10px;
+    outline:none;
+  }
+  #deptSelect:invalid{
+    color:var(--ink-soft);
+  }
+
   .btn{
     font-family:'Cormorant Garamond', serif;
     font-size:1.08rem;
@@ -300,7 +324,7 @@
     font-family:'Playfair Display', serif;
     font-style:normal;
     font-weight:800;
-    font-size:2.4rem; /* VERY PROMINENT */
+    font-size:2.6rem; 
     animation: goldShimmer 2.5s infinite ease-in-out;
     display:inline-block;
     line-height:0.8;
@@ -311,7 +335,7 @@
   .footer-meta{
     margin-top:32px;
     text-align:center;
-    font-size:1.6rem; /* VERY BIG */
+    font-size:1.8rem; 
     font-weight:600;
     color:var(--ink);
     font-style:italic;
@@ -350,6 +374,27 @@
     <div id="step1">
       <label for="nameInput">Enter your name</label>
       <input type="text" id="nameInput" placeholder="Andrew Veda" autocomplete="off">
+      <label for="deptSelect" class="dept-label">Select your department</label>
+      <select id="deptSelect" required>
+        <option value="" disabled selected>Choose department</option>
+        <option value="Cyber Security">Cyber Security</option>
+        <option value="CSE-1">CSE-1</option>
+        <option value="CSE-2">CSE-2</option>
+        <option value="CSE-3">CSE-3</option>
+        <option value="Mechanical Engineering">Mechanical Engineering</option>
+        <option value="ECE-1">ECE-1</option>
+        <option value="ECE-2">ECE-2</option>
+        <option value="ECE-3">ECE-3</option>
+        <option value="AI DS-1">AI DS-1</option>
+        <option value="AI DS-2">AI DS-2</option>
+        <option value="Civil">Civil</option>
+        <option value="Agri">Agri</option>
+        <option value="EEE">EEE</option>
+        <option value="EIE">EIE</option>
+        <option value="Medical Electronics">Medical Electronics</option>
+        <option value="IT-1">IT-1</option>
+        <option value="IT-2">IT-2</option>
+      </select>
       <button class="btn" id="beginBtn">Begin my poem</button>
     </div>
 
@@ -380,6 +425,7 @@
 <script>
 (function(){
   var nameInput = document.getElementById('nameInput');
+  var deptSelect = document.getElementById('deptSelect');
   var beginBtn = document.getElementById('beginBtn');
   var step1 = document.getElementById('step1');
   var builder = document.getElementById('builder');
@@ -396,6 +442,7 @@
   var backLink = document.getElementById('backLink');
 
   var currentName = '';
+  var currentDept = '';
   var letterInputs = [];
 
   function slugify(str){
@@ -469,19 +516,20 @@
     });
     var today = new Date();
     var dateStr = today.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
-    footerMeta.textContent = '— ' + currentName + ', ' + dateStr;
+    footerMeta.textContent = '— ' + currentName + ', ' + currentDept + ', ' + dateStr;
   }
 
   function buildPoemDocument(){
     var today = new Date();
     var dateStr = today.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    var termText = currentName + ' — ' + currentDept + ' — ' + dateStr;
     var linesHtml = letterInputs.map(function(li){
       var text = li.input.value.trim();
       var rest = text.length > 0 && text[0].toUpperCase() === li.letter
         ? text.slice(1)
         : text;
-      return '<p><span class="cap">' + escapeHtml(li.letter) + '</span>' + escapeHtml(rest) + '</p>';
-    }).join('\n      ');
+      return '<p class="line-text"><span class="cap">' + escapeHtml(li.letter) + '</span>' + escapeHtml(rest) + '</p>';
+    }).join('\n        ');
 
     return '<!DOCTYPE html>\n' +
 '<html lang="en">\n' +
@@ -495,22 +543,54 @@
 '  :root{--cream:#f6efdc;--cream-panel:#fbf6ea;--gold:#b8933f;--gold-deep:#8a6a24;--gold-pale:#e3d3a3;--ink:#3a2c1a;--ink-soft:#6b5636;}\n' +
 '  *{box-sizing:border-box;}\n' +
 '  body{margin:0;background:var(--cream);background-image:linear-gradient(45deg, transparent 47%, var(--gold-pale) 49%, var(--gold-pale) 51%, transparent 53%),linear-gradient(-45deg, transparent 47%, var(--gold-pale) 49%, var(--gold-pale) 51%, transparent 53%);background-size:46px 46px;font-family:\'Cormorant Garamond\', serif;color:var(--ink);}\n' +
-'  .page{max-width:520px;margin:0 auto;padding:32px 18px 60px;}\n' +
-'  .frame{background:rgba(251,246,234,0.92);border:1px solid var(--gold);padding:30px 24px;position:relative;}\n' +
+'  .layout-wrapper { display:flex; flex-direction:column; gap:2rem; max-width:1200px; margin:0 auto; padding:32px 16px 60px; align-items:center; }\n' +
+'  .main-content, .comments-section { width:100%; max-width:520px; }\n' +
+'  @media (min-width: 1024px) {\n' +
+'    .layout-wrapper { flex-direction:row; align-items:flex-start; justify-content:center; gap:3rem; padding:40px 24px 80px; }\n' +
+'    .comments-section { position:sticky; top:40px; }\n' +
+'  }\n' +
+'  .frame{background:rgba(251,246,234,0.92);border:1px solid var(--gold);padding:30px 24px;position:relative;height:100%;}\n' +
 '  .frame::before{content:"";position:absolute;inset:6px;border:1px solid var(--gold-pale);pointer-events:none;}\n' +
 '  h1{font-family:\'Cinzel\', serif;font-weight:600;font-size:1.4rem;letter-spacing:0.04em;text-align:center;color:var(--gold-deep);margin:2px 0 22px;}\n' +
-'  p{font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.3rem;margin:8px 0;line-height:1.45;}\n' +
+'  .subtitle{text-align:center;font-style:italic;color:var(--ink-soft);font-size:1.05rem;margin:-14px 0 22px;}\n' +
+'  p.line-text{font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.3rem;margin:8px 0;line-height:1.45;}\n' +
 '  @keyframes goldShimmer { 0% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } 50% { color: #f9d71c; text-shadow: 0 0 15px #f9d71c; } 100% { color: var(--gold-deep); text-shadow: 0 0 2px var(--gold-pale); } }\n' +
 '  .cap{font-family:\'Playfair Display\', serif;font-style:normal;font-weight:800;font-size:2.6rem;animation:goldShimmer 2.5s infinite ease-in-out;display:inline-block;line-height:0.8;margin-right:4px;vertical-align:-3px;}\n' +
 '  .meta{margin-top:36px;text-align:center;font-family:\'Cormorant Garamond\', serif;font-style:italic;font-size:1.8rem;font-weight:600;color:var(--ink);}\n' +
 '</style>\n' +
 '</head>\n' +
 '<body>\n' +
-'  <div class="page">\n' +
-'    <div class="frame">\n' +
-'      <h1>An Acrostic Poem</h1>\n' +
-'      ' + linesHtml + '\n' +
-'      <p class="meta">— ' + escapeHtml(currentName) + ', ' + dateStr + '</p>\n' +
+'  <div class="layout-wrapper">\n' +
+'    <!-- Left Side: Generated Poem -->\n' +
+'    <div class="main-content">\n' +
+'      <div class="frame">\n' +
+'        <h1>An Acrostic Poem</h1>\n' +
+'        ' + linesHtml + '\n' +
+'        <p class="meta">— ' + escapeHtml(currentName) + ', ' + escapeHtml(currentDept) + ', ' + dateStr + '</p>\n' +
+'      </div>\n' +
+'    </div>\n' +
+'    <!-- Right Side / Mobile Bottom: Giscus Comments -->\n' +
+'    <div class="comments-section">\n' +
+'      <div class="frame">\n' +
+'        <h1>Guestbook</h1>\n' +
+'        <p class="subtitle">Share your thoughts</p>\n' +
+'        <script src="https://giscus.app/client.js"\n' +
+'          data-repo="andrewveda/eclatineers"\n' +
+'          data-repo-id="R_kgDOTP7ILw"\n' +
+'          data-category="General"\n' +
+'          data-category-id="DIC_kwDOTP7IL84DAruF"\n' +
+'          data-mapping="specific"\n' +
+'          data-term="' + escapeHtml(termText) + '"\n' +
+'          data-strict="1"\n' +
+'          data-reactions-enabled="1"\n' +
+'          data-emit-metadata="0"\n' +
+'          data-input-position="top"\n' +
+'          data-theme="light"\n' +
+'          data-lang="en"\n' +
+'          crossorigin="anonymous"\n' +
+'          async>\n' +
+'        <\/script>\n' +
+'      </div>\n' +
 '    </div>\n' +
 '  </div>\n' +
 '</body>\n' +
@@ -526,7 +606,10 @@
   beginBtn.addEventListener('click', function(){
     var val = nameInput.value.trim();
     if (!val) { nameInput.focus(); return; }
+    var dept = deptSelect.value;
+    if (!dept) { deptSelect.focus(); return; }
     currentName = val;
+    currentDept = dept;
     buildRows(val);
     step1.classList.add('hidden');
     builder.classList.add('active');
@@ -574,6 +657,7 @@
     preview.classList.remove('active');
     warnLong.classList.remove('active');
     nameInput.value = '';
+    deptSelect.value = '';
     nameInput.focus();
   });
 })();
